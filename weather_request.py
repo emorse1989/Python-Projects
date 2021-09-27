@@ -43,7 +43,7 @@ def wind_direction(wind):
     elif wind in range(349,360):
         return 'N'
 
-#receives dictionary from api request
+#receives dictionary from api request and outputs formatted summary using dictionary keys
 def weather_summary(weather):
     print(f"\nRetrieving weather information for {weather['name'].title()}...\n")
     sleep(2)    
