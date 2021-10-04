@@ -31,7 +31,7 @@ def get_user_data():
     retry = 'y'
     while retry == 'y':
         file_name = input("Please enter the name you wish to give to your file "+
-        "a .txt file type will be added automatically): ")
+        "(a .txt file type will be added automatically): ")
         for item in illegal_characters:
             if item in file_name:
                 print("You have included an illegal character in your filename.")
