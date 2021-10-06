@@ -95,8 +95,6 @@ def zip_input():
     location_zip = input('\nPlease enter a 5-digit ZIP code: ')
     if len(location_zip) == 5:
         url = f'http://api.openweathermap.org/data/2.5/weather?zip={location_zip}&units=imperial&appid=a044db901da46a189dae54efbc282ea6'
-        print(url)
-        input()
         tries = 0
         weather = api_request(url, tries)
         weather_summary(weather)
