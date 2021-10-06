@@ -6,8 +6,8 @@ from time import sleep
 #Designate global variable to make including the degree symbol simpler
 degree_sign = u'\N{DEGREE SIGN}'
 
-#Really long function to translate wind degrees into a compass direction
 def wind_direction(wind):
+    '''Converts wind angle value into compass direction'''
     if wind in range(0,11):
         return 'N'
     elif wind in range(11,34):
@@ -43,8 +43,8 @@ def wind_direction(wind):
     elif wind in range(349,360):
         return 'N'
 
-#receives dictionary from api request and outputs formatted summary using dictionary keys
 def weather_summary(weather):
+    '''receives dictionary from api request and outputs formatted summary using dictionary keys'''
     print(f"\nRetrieving weather information for {weather['name'].title()}...\n")
     sleep(2)    
     print(f"Current conditions: {weather['weather'][0]['description'].title()}")
@@ -60,69 +60,73 @@ def weather_summary(weather):
     wind_dir = wind_direction(weather['wind']['deg'])
     print(f"Wind Direction: {wind_dir}\n")
 
-#makes API request using ZIP and returns JSON response as a dictionary
-def zip_request(zip_code):
-    weather = requests.get(f'http://api.openweathermap.org/data/2.5/weather?zip={zip_code}'
-                           '&units=imperial&appid=a044db901da46a189dae54efbc282ea6')
+def api_request(url, tries):
+    '''Uses try block to issue api call to openweather.org'''
+    try:
+        weather = requests.get(url)
+    except TimeoutError:
+        print("The connection timed out. Retrying...")
+        sleep(1)
+        tries += 1
+        if tries == 5:
+            print("Unable to retrieve weather data. Returning to main menu.")
+            menu()
+        else:
+            api_request(url, tries)
+    except BaseException:
+        print("Something has gone wrong. Retrying...")
+        sleep(1)
+        tries += 1
+        if tries == 5:
+            print("Connection unsuccessful. Returning to main menu.")
+            menu()
+        else:
+            api_request(url, tries)        
     weather = weather.json()
-    weather = dict(weather)
     if weather['cod'] != 200:
-            print("\nOops! Something went wrong. Please re-enter zip information.\n")
-            zip_input()
+        print(f"Something went wrong!\nError Code: {weather['cod']}\n"+
+            f"Error Message: {weather['message']}\nReturning to main menu.")
+        menu()
     else:
         return weather
-    
-#makes API request using city/state/country and returns JSON response as a dictionary
-def city_request(city, country, state):
-    if state:
-        weather = requests.get(f'http://api.openweathermap.org/data/2.5/weather?q={city},{state},'+
-                               f'{country}&units=imperial&appid=a044db901da46a189dae54efbc282ea6')
-        weather = weather.json()
-        weather = dict(weather)
-        if weather['cod'] != 200:
-            print("\nOops! Something went wrong. Please re-enter city information.\n")
-            city_input()
-        else:
-            return weather
-    else:
-        weather = requests.get(f'http://api.openweathermap.org/data/2.5/weather?q={city},{country}'+
-                               '&units=imperial&appid=a044db901da46a189dae54efbc282ea6')
-        weather = weather.json()
-        weather = dict(weather)
-        if weather['cod'] != 200:
-            print("\nOops! Something went wrong. Please re-enter city information.\n")
-            city_input()
-        else:
-            return weather
 
-#takes ZIP code and runs api request and returns weather summary
 def zip_input():
+    '''takes ZIP code and runs api request and returns weather summary'''
     location_zip = input('\nPlease enter a 5-digit ZIP code: ')
     if len(location_zip) == 5:
-        weather = zip_request(location_zip)
+        url = f'http://api.openweathermap.org/data/2.5/weather?zip={location_zip}&units=imperial&appid=a044db901da46a189dae54efbc282ea6'
+        print(url)
+        input()
+        tries = 0
+        weather = api_request(url, tries)
         weather_summary(weather)
     else:
         print("\nInvalid input. Please try again.\n")
         zip_input()
 
-#determines if city is inside or outside US, then runs the api request and returns weather summary
 def city_input():
+    '''determines if city is inside or outside US, then runs the api request and returns weather summary'''
     in_us = input("Is your location inside the United States? (y/n): ").lower()
     if in_us == 'yes' or in_us == 'y':    
-        location_city = input('Enter the name of the city: ')
-        location_state = input('Enter the 2-letter state code: ').lower()
-        location_country = 'US'
-        weather = city_request(location_city, location_country, location_state)
+        city = input('Enter the name of the city: ')
+        state = input('Enter the 2-letter state code: ').lower()
+        url = f'http://api.openweathermap.org/data/2.5/weather?q={city},{state},US&units=imperial&appid=a044db901da46a189dae54efbc282ea6'
+        tries = 0
+        weather = api_request(url, tries)
         weather_summary(weather)
     elif in_us == 'no' or in_us == 'n':
-        location_city = input('Enter the name of the city: ')
-        location_country = input('Enter the 2-letter country code: ')
-        location_state = ''
-        weather = city_request(location_city, location_country, location_state)
+        city = input('Enter the name of the city: ')
+        country = input('Enter the 2-letter country code: ')
+        url = f'http://api.openweathermap.org/data/2.5/weather?q={city},{country}&units=imperial&appid=a044db901da46a189dae54efbc282ea6'
+        tries = 0
+        weather = api_request(url, tries)
         weather_summary(weather)
+    else:
+        print("Invalid input. Answer yes or no.")
+        city_input()
 
-#displays fancy title and asks user to pick location type
 def menu():
+    '''displays fancy title and asks user to pick location type'''
     print(''' _    _ _           _   _      ___  ___        _    _            _   _             ___  
 | |  | | |         | | ( )     |  \/  |       | |  | |          | | | |           |__ \ 
 | |  | | |__   __ _| |_|/ ___  | .  . |_   _  | |  | | ___  __ _| |_| |__   ___ _ __ ) |
@@ -138,18 +142,22 @@ def menu():
 ****************************************************************************************''')
     retry = 'yes'
     while retry == 'yes' or retry == 'y':
-        location_mode = input('Lookup Type - Enter "Zip" or "City": ')
+        location_mode = input('(ENTER Q TO QUIT PROGRAM)\nLookup Type - Enter "Zip" or "City": ')
         if location_mode.lower() == 'zip':
             zip_input()
             retry = 'n'
         elif location_mode.lower() == 'city':
             city_input()
             retry = 'n'
+        elif location_mode.lower() == 'q':
+            input('\nThank you for using "What\'s My Weather?". Press enter to exit the program.')
+            quit()
         else:
             print("\nInput not recognized. Please try again.\n")
 
-#creates a while loop, opens the menu, and asks user to retry after getting their weather summary, also closes program if retry is no
 def main():
+    '''creates a while loop, opens the menu, and asks user to retry after 
+    getting their weather summary also closes program if retry is no'''
     global_retry = 'yes'
     while global_retry.lower() == 'yes' or global_retry.lower() == 'y':    
         menu()
